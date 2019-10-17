@@ -46,7 +46,11 @@ struct Intersection {
     float distance;
     int index;
     
-    Intersection() {}
+    Intersection() {
+        hit = false;
+        distance = AURORA_INFINITY;
+        index = -1;
+    }
     Intersection(bool hit, float distance, int index) {
         this->hit = hit;
         this->distance = distance;
@@ -62,7 +66,22 @@ struct Scene {
         this->shapes = shapes;
     }
     
-    bool intersects(const Ray & ray, Intersection & intersection) const {}
+    bool intersects(const Ray & ray, Intersection & intersection) const {
+        for (int i = 0; i < shapes.size(); i++) {
+            Shape * shape = shapes[i];
+            
+            Intersection temp;
+            shape->intersects(ray, temp);
+            
+            if (temp.hit && temp.distance < intersection.distance) {
+                intersection.hit = temp.hit;
+                intersection.distance = temp.distance;
+                intersection.index = i;
+            }
+        }
+        
+        return intersection.hit;
+    }
 };
 
 struct Ray {
@@ -121,6 +140,64 @@ struct Sphere : Shape {
         this->radius = radius;
     }
     
+    virtual bool intersects(const Ray & ray, Intersection & intersection) const {
+        Vector3 l = position - ray.origin;
+        float t = l.dot(ray.direction);
+        
+        if (t < 0)
+            return false;
+            
+        float d2 = l.dot(l) - t * t;
+        float r2 = radius * radius;
+        
+        if (d2 > r2)
+            return false;
+        
+        float dt = std::sqrt(r2 - d2);
+        
+        float t0 = t - dt;
+        float t1 = t + dt;
+        
+        if (t0 > t1)
+            std::swap(t0, t1);
+        
+        if (t0 < 0) {
+            t0 = t1;
+            
+            if (t0 < 0)
+                return false;
+        }
+        
+        intersection.hit = true;
+        intersection.distance = t0;
+        
+        return true;
+    }
+    virtual void calculateShaderGlobals(
+            const Ray & ray, const Intersection & intersection,
+            ShaderGlobals & shaderGlobals) const {
+        shaderGlobals.point = ray.point(intersection.distance);
+        shaderGlobals.normal = (shaderGlobals.point - position).normalize();
+        
+        float theta = std::atan2(shaderGlobals.normal.x, shaderGlobals.normal.z);
+        float phi = std::acos(shaderGlobals.normal.y);
+        
+        shaderGlobals.uv.x = theta * AURORA_INV_PI * 0.5;
+        shaderGlobals.uv.y = phi * AURORA_INV_PI;
+        
+        shaderGlobals.tangentU.x = std::cos(theta);
+        shaderGlobals.tangentU.y = 0;
+        shaderGlobals.tangentU.z = -std::sin(theta);
+        
+        shaderGlobals.tangentV.x = std::sin(theta) * std::cos(phi);
+        shaderGlobals.tangentV.y = -std::sin(phi);
+        shaderGlobals.tangentV.z = std::cos(theta) * std::cos(phi);
+        
+        shaderGlobals.viewDirection = -ray.direction;
+    }
+    virtual float surfaceArea() const {
+        return 4.0 * AURORA_PI * radius * radius;
+    }
 };
 
 struct ShaderGlobals {
@@ -171,7 +248,6 @@ struct Vertex {
 }
 
 int main(int argc, char ** argv) {
-    RenderOptions options(500, 500, 1, 4, 1, 1, 2.0, 2.2, 0);
     
     return 0;
 }
