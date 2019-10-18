@@ -12,6 +12,32 @@
 
 using namespace aurora;
 
+struct ShaderGlobals {
+    Vector3 point;
+    Vector3 normal;
+    Vector3 tangentU;
+    Vector3 tangentV;
+    Vector3 viewDirection;
+    Vector3 lightDirection;
+    Vector3 lightPoint;
+    Vector3 lightNormal;
+    Vector2 textureCoordinate;
+    Vector2 uv;
+    
+    ShaderGlobals() {}
+    ShaderGlobals(const Vector3 & point, const Vector3 & normal, const Vector2 & uv,const Vector3 & tangentU, const Vector3 & tangentV,const Vector3 & viewDirection, const Vector3 & lightDirection,const Vector3 & lightPoint, const Vector3 & lightNormal, const Vector2 & textureCoordinate) {
+        this->point = point;
+        this->normal = normal;
+        this->uv = uv;
+        this->tangentU = tangentU;
+        this->tangentV = tangentV;
+        this->viewDirection = viewDirection;
+        this->lightDirection = lightDirection;
+        this->lightPoint = lightPoint;
+        this->lightNormal = lightNormal;
+    }
+};
+
 struct Intersection {
     bool hit;
     float distance;
@@ -26,32 +52,6 @@ struct Intersection {
         this->hit = hit;
         this->distance = distance;
         this->index = index;
-    }
-};
-
-struct Scene {
-    std::vector<Shape *> shapes;
-    
-    Scene();
-    Scene(const std::vector<Shape *> & shapes) {
-        this->shapes = shapes;
-    }
-    
-    bool intersects(const Ray & ray, Intersection & intersection) const {
-        for (int i = 0; i < shapes.size(); i++) {
-            Shape * shape = shapes[i];
-            
-            Intersection temp;
-            shape->intersects(ray, temp);
-            
-            if (temp.hit && temp.distance < intersection.distance) {
-                intersection.hit = temp.hit;
-                intersection.distance = temp.distance;
-                intersection.index = i;
-            }
-        }
-        
-        return intersection.hit;
     }
 };
 
@@ -99,6 +99,32 @@ struct Shape {
     virtual bool intersects(const Ray & ray, Intersection & intersection) const = 0;
     virtual void calculateShaderGlobals(const Ray & ray, const Intersection & intersection,ShaderGlobals & shaderGlobals) const = 0;
     virtual float surfaceArea() const = 0;
+};
+
+struct Scene {
+    std::vector<Shape *> shapes;
+    
+    Scene();
+    Scene(const std::vector<Shape *> & shapes) {
+        this->shapes = shapes;
+    }
+    
+    bool intersects(const Ray & ray, Intersection & intersection) const {
+        for (int i = 0; i < shapes.size(); i++) {
+            Shape * shape = shapes[i];
+            
+            Intersection temp;
+            shape->intersects(ray, temp);
+            
+            if (temp.hit && temp.distance < intersection.distance) {
+                intersection.hit = temp.hit;
+                intersection.distance = temp.distance;
+                intersection.index = i;
+            }
+        }
+        
+        return intersection.hit;
+    }
 };
 
 struct Sphere : Shape {
@@ -169,28 +195,16 @@ struct Sphere : Shape {
     }
 };
 
-struct ShaderGlobals {
-    Vector3 point;
+struct Vertex {
+    Vector3 position;
     Vector3 normal;
-    Vector2 uv;
-    Vector3 tangentU;
-    Vector3 tangentV;
-    Vector3 viewDirection;
-    Vector3 lightDirection;
-    Vector3 lightPoint;
-    Vector3 lightNormal;
-    
-    ShaderGlobals() {}
-    ShaderGlobals(const Vector3 & point, const Vector3 & normal, const Vector2 & uv,const Vector3 & tangentU, const Vector3 & tangentV,const Vector3 & viewDirection, const Vector3 & lightDirection,const Vector3 & lightPoint, const Vector3 & lightNormal) {
-        this->point = point;
+    Vector2 textureCoordinate;
+
+    Vertex(){}
+    Vertex(const Vector3 & position , const Vector3 normal, const Vector2 textureCoordinate){
+        this->position = position;
         this->normal = normal;
-        this->uv = uv;
-        this->tangentU = tangentU;
-        this->tangentV = tangentV;
-        this->viewDirection = viewDirection;
-        this->lightDirection = lightDirection;
-        this->lightPoint = lightPoint;
-        this->lightNormal = lightNormal;
+        this->textureCoordinate = textureCoordinate;
     }
 };
 
@@ -289,20 +303,7 @@ struct Triangle : Shape {
         return *this;
     }
 
-}
-
-struct Vertex {
-    Vector3 position;
-    Vector3 normal;
-    Vector2 textureCoordinate;
-
-    Vertex() : Vertex(){}
-    Vertex(const Vector3 & position , const Vector3 normal, const Vector2 textureCoordinate){
-        this->position = position;
-        this->normal = normal;
-        this->textureCoordinate = textureCoordinate;
-    }
-}
+};
 
 int main(int argc, char ** argv) {
     BSDF * bsdf = new BSDF(BSDFType::Diffuse, Color3(1.0f, 1.0f, 1.0f));
