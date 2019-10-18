@@ -305,6 +305,37 @@ struct Triangle : Shape {
 
 };
 
+struct Film {
+    float width;
+    float height;
+    
+    Film() {}
+    Film(float width, float height) {
+        this->width = width;
+        this->height = height;
+    }
+    
+    float aspectRatio() const {
+        return width / height;
+    }
+};
+
+struct Camera {
+    float fieldOfView;
+    Film film;
+    Matrix4 worldMatrix;
+    
+    Camera() {}
+    Camera(float fieldOfView, const Film & film, const Matrix4 & worldMatrix) {
+        this->fieldOfView = fieldOfView;
+        this->film = film;
+        this->worldMatrix = worldMatrix;
+    }
+    
+    void lookAt(const Vector3 & position, const Vector3 & target, const Vector3 & up) {}
+    Ray generateRay(float x, float y, const Vector2 & sample) const {}
+};
+
 int main(int argc, char ** argv) {
     BSDF * bsdf = new BSDF(BSDFType::Diffuse, Color3(1.0f, 1.0f, 1.0f));
     
