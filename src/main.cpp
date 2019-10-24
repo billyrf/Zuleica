@@ -375,6 +375,47 @@ struct Camera {
     }
 };
 
+struct RenderOptions {
+    int width;
+    int height;
+    int maximumDepth;
+    int cameraSamples;
+    int lightSamples;
+    int diffuseSamples;
+    float filterWidth;
+    float gamma;
+    float exposure;
+    
+    RenderOptions() {}
+    RenderOptions(int width, int height, int maximumDepth,int cameraSamples, int lightSamples, int diffuseSamples, float filterWidth, float gamma, float exposure) {
+        this->width = width;
+        this->height = height;
+        this->maximumDepth = maximumDepth;
+        this->cameraSamples = cameraSamples;
+        this->lightSamples = lightSamples;
+        this->diffuseSamples = diffuseSamples;
+        this->filterWidth = filterWidth;
+        this->gamma = gamma;
+        this->exposure = exposure;
+    }
+};
+
+struct Renderer {
+    RenderOptions * options;
+    Camera * camera;
+    Scene * scene;
+    
+    Renderer() {}
+    Renderer(RenderOptions * options, Camera * camera, Scene * scene) {
+        this->options = options;
+        this->camera = camera;
+        this->scene = scene;
+    }
+   
+    Color3 trace(const Ray & ray, int depth) const {}
+    Image3 render() const {}
+};
+
 int main(int argc, char ** argv) {
     Film film(800, 600);
     
