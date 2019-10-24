@@ -327,13 +327,52 @@ struct Camera {
     
     Camera() {}
     Camera(float fieldOfView, const Film & film, const Matrix4 & worldMatrix) {
-        this->fieldOfView = fieldOfView;
+        this->fieldOfView =fieldOfView;
         this->film = film;
         this->worldMatrix = worldMatrix;
     }
     
-    void lookAt(const Vector3 & position, const Vector3 & target, const Vector3 & up) {}
-    Ray generateRay(float x, float y, const Vector2 & sample) const {}
+    void lookAt(const Vector3 & position, const Vector3 & target, const Vector3 & up) {
+        Vector3 w = (position - target).normalize();
+        Vector3 u = up.cross(w).normalize();
+        Vector3 v = w.cross(u);
+        
+        worldMatrix[0][0] = u.x;
+        worldMatrix[0][1] = u.y;
+        worldMatrix[0][2] = u.z;
+        worldMatrix[0][3] = 0;
+        
+        worldMatrix[1][0] = v.x;
+        worldMatrix[1][1] = v.y;
+        worldMatrix[1][2] = v.z;
+        worldMatrix[1][3] = 0;
+        
+        worldMatrix[2][0] = w.x;
+        worldMatrix[2][1] = w.y;
+        worldMatrix[2][2] = w.z;
+        worldMatrix[2][3] = 0;
+        
+        worldMatrix[3][0] = position.x;
+        worldMatrix[3][1] = position.y;
+        worldMatrix[3][2] = position.z;
+        worldMatrix[3][3] = 1.0;
+    }
+    Ray generateRay(float x, float y, const Vector2 & sample) const {
+        float scale = std::tan(fieldOfView * 0.5);
+        
+        Vector3 pixel;
+        
+        pixel.x = (2.0 * (x + sample.x + 0.5) / film.width - 1.0) * scale * film.aspectRatio();
+        pixel.y = (1.0 - 2.0 * (y + sample.y + 0.5) / film.height) * scale;
+        pixel.z = -1.0;
+        
+        pixel *= worldMatrix;
+        
+        Vector3 position(worldMatrix[3][0], worldMatrix[3][1], worldMatrix[3][2]);
+        Vector3 direction = (pixel - position).normalize();
+        
+        return Ray(position, direction);
+    }
 };
 
 int main(int argc, char ** argv) {
