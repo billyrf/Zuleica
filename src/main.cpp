@@ -376,6 +376,11 @@ struct Camera {
 };
 
 int main(int argc, char ** argv) {
+    Film film(800, 600);
+    
+    Camera camera(radians(20.0), film, Matrix4());
+    camera.lookAt(Vector3(0, 0, 35.0), Vector3(0, 0, 0), Vector3(0, 1.0, 0));
+    
     BSDF * bsdf = new BSDF(BSDFType::Diffuse, Color3(1.0f, 1.0f, 1.0f));
     
     Shape * sphere = new Sphere(Vector3(0.0f, 0.0f, 0.0f), 1.0f, bsdf);
