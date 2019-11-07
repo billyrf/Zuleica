@@ -496,7 +496,7 @@ struct Renderer {
 
 int main(int argc, char ** argv) {
 
-	RenderOptions options(400, 600, 1, 4, 1, 1, 2.0, 2.0, 0);
+    RenderOptions options(400, 600, 1, 4, 1, 1, 2.0, 2.0, 0);
 	
     Film film(800, 600);
     
@@ -551,7 +551,6 @@ int main(int argc, char ** argv) {
     
     Image3 * image = new Image3(options.width, options.height);
    	
-    
     if (writeImage("saida.ppm", image))
         std::cout << "Success." << std::endl;
     else
