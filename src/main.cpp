@@ -412,11 +412,51 @@ struct Renderer {
         this->scene = scene;
     }
    
-    Color3 trace(const Ray & ray, int depth) const {}
-    Image3 render() const {}
+    Color3 trace(const Ray & ray, int depth) const {
+        
+        Intersection intersection = scene.intersects(ray)
+
+        if (intersection.hit)
+            return Color(1.0, 1.0, 1.0)
+
+        return Color(0, 0, 0)
+        
+    }
+    Image3 render() const {
+
+        
+        for (int i = 0; i < options->width-1; i++) {
+            for (int j = 0; j < options->height-1; j++) {
+
+                std::vector<Vector2> samples;
+                stratifiedSample(options->cameraSamples, samples);
+                
+                Color3 color = Color3(0, 0, 0);
+                float totalWeight = 0;
+                
+                for (int k = 0; k < options->cameraSamples; k++) {
+                    Vector2 sample = (samples[k] - point(0.5, 0.5)) * options->filterWidth;
+                    Ray ray = camera->generateRay(i, j, sample);
+                    
+                    float weight = gaussian2D(sample, options->filterWidth);
+                    
+                    color += trace(ray, 0) * weight;
+                    totalWeight += weight;
+                }
+                
+                color /= totalWeight;
+                
+                image[i][j] = saturate(gamma(exposure(color, exposureValue), gammaValue)) * 255;
+            }
+        }
+    }
+    }
 };
 
 int main(int argc, char ** argv) {
+
+    RenderOptions options(500, 500, 1, 1, 1, 1, 1, 1, 0);
+
     Film film(800, 600);
     
     Camera camera(radians(20.0), film, Matrix4());
@@ -447,7 +487,7 @@ int main(int argc, char ** argv) {
     std::cout << "Hit: " << intersection.hit << std::endl;
     std::cout << "Distance: " << intersection.distance << std::endl;
     std::cout << "Index: " << intersection.index << std::endl;
-    
+
     if (intersection.hit) {
         Shape * shape = scene.shapes[intersection.index];
         
@@ -465,6 +505,15 @@ int main(int argc, char ** argv) {
         std::cout << "Light point: " << shaderGlobals.lightPoint << std::endl;
         std::cout << "Light normal: " << shaderGlobals.lightNormal << std::endl;
     }
+
+    Renderer renderer(&options, &camera, &scene);
+    Image3 * image = new Image3(options.width, options.height);
+    renderer.render(image);
+    
+    if (writeImage("output.ppm", image))
+        std::cout << "Success." << std::endl;
+    else
+        std::cout << "Failure." << std::endl;
     
     delete bsdf;
     delete sphere;
