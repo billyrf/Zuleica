@@ -464,10 +464,9 @@ struct Renderer {
         
     };
     
-    Image3 render() const {
-	    
-	Image3 * image;
-	const Vector2 Point(0.5, 0.5);
+    Color3 render(Image3 * image) const {
+		
+		const Vector2 Point(0.5, 0.5);
 		
         for (int i = 0; i < options->width; i++) {
             for (int j = 0; j < options->height; j++) {
@@ -488,16 +487,18 @@ struct Renderer {
                 }
                 
                 color /= totalWeight;
-            
+                
+                image->setPixel(i, j, color);
                 /*image[i][j] = saturate(gamma(exposure(color, exposureValue), gammaValue)) * 255;*/
             }
         }
+       
     }
 };
 
 int main(int argc, char ** argv) {
 
-    RenderOptions options(400, 600, 1, 4, 1, 1, 2.0, 2.0, 0);
+	RenderOptions options(600, 600, 1, 4, 1, 1, 2.0, 2.0, 0);
 	
     Film film(800, 600);
     
@@ -551,7 +552,8 @@ int main(int argc, char ** argv) {
     Renderer renderer(&options, &camera, &scene);
     
     Image3 * image = new Image3(options.width, options.height);
-   	
+   	renderer.render(image);
+    
     if (writeImage("saida.ppm", image))
         std::cout << "Success." << std::endl;
     else
