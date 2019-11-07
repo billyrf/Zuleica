@@ -42,6 +42,16 @@ float gaussian2D(const Vector2 & sample, float width) {
     return gaussian1D(sample.x, width) * gaussian1D(sample.y, width);
 }
 
+Color3 gamma(Color3 color, float value){
+    float inverseGamma = (1 / value);
+	return Color3(pow(color.r, inverseGamma), pow(color.g, inverseGamma), pow(color.b, inverseGamma));
+}
+	
+Color3 exposure(Color3 color, float value){
+	float power = pow(2, value);
+	return Color3(color.r * power, color.g * power, color.b * power);
+}
+	
 struct ShaderGlobals {
     Vector3 point;
     Vector3 normal;
@@ -443,17 +453,6 @@ struct Renderer {
         this->scene = scene;
     }
     
-    Color3 gamma(Color3 color, float value){
-    	float inverseGamma = (1 / value);
-		return Color3(pow(color.r, inverseGamma), pow(color.g, inverseGamma), pow(color.b, inverseGamma));
-	}
-	
-	Color3 exposure(Color3 color, float value){
-		float power = pow(2, value);
-		return Color3(color.r * power, color.g * power, color.b * power);
-	} 
-
-   
     Color3 trace(const Ray & ray, int depth) const {
         
         Intersection intersection;
@@ -465,12 +464,12 @@ struct Renderer {
         
     };
     
-    Image3 render(Image3 * image) const {
-	
+    Image3 render() const {
+		Image3 * image;
 		const Vector2 Point(0.5, 0.5);
 		
-        for (int i = 0; i < options->width-1; i++) {
-            for (int j = 0; j < options->height-1; j++) {
+        for (int i = 0; i < options->width; i++) {
+            for (int j = 0; j < options->height; j++) {
 				std::vector<Vector2> samples;
                 stratifiedSample(options->cameraSamples,samples);
                 
@@ -488,8 +487,8 @@ struct Renderer {
                 }
                 
                 color /= totalWeight;
-                
-                image[i][j] = saturate(gamma(exposure(color,exposureValue), gammaValue)) * 255;
+            
+                /*image[i][j] = saturate(gamma(exposure(color, exposureValue), gammaValue)) * 255;*/
             }
         }
     }
@@ -497,6 +496,8 @@ struct Renderer {
 
 int main(int argc, char ** argv) {
 
+	RenderOptions options(400, 600, 1, 4, 1, 1, 2.0, 2.0, 0);
+	
     Film film(800, 600);
     
     Camera camera(radians(20.0), film, Matrix4());
@@ -527,7 +528,7 @@ int main(int argc, char ** argv) {
     std::cout << "Hit: " << intersection.hit << std::endl;
     std::cout << "Distance: " << intersection.distance << std::endl;
     std::cout << "Index: " << intersection.index << std::endl;
-
+        
     if (intersection.hit) {
         Shape * shape = scene.shapes[intersection.index];
         
@@ -546,6 +547,16 @@ int main(int argc, char ** argv) {
         std::cout << "Light normal: " << shaderGlobals.lightNormal << std::endl;
     }
     
+    Renderer renderer(&options, &camera, &scene);
+    
+    Image3 * image = new Image3(options.width, options.height);
+   	
+    
+    if (writeImage("saida.ppm", image))
+        std::cout << "Success." << std::endl;
+    else
+        std::cout << "Failure." << std::endl;
+        
     delete bsdf;
     delete sphere;
     delete triangle;
