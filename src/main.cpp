@@ -465,8 +465,9 @@ struct Renderer {
     };
     
     Image3 render() const {
-		Image3 * image;
-		const Vector2 Point(0.5, 0.5);
+	    
+	Image3 * image;
+	const Vector2 Point(0.5, 0.5);
 		
         for (int i = 0; i < options->width; i++) {
             for (int j = 0; j < options->height; j++) {
