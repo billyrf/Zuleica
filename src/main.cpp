@@ -260,6 +260,7 @@ struct Triangle : Shape {
         return true;
     }
     virtual void calculateShaderGlobals( const Ray & ray, const Intersection & intersection, ShaderGlobals & shaderGlobals) const {
+    	
         const Vector3 & p0 = vertices[0].position;
         const Vector3 & p1 = vertices[1].position;
         const Vector3 & p2 = vertices[2].position;
@@ -387,6 +388,140 @@ struct RenderOptions {
     float exposure;
     
     RenderOptions() {}
+    RenderOptions(int width, int height, int maximumDepth,int cameraSamples, int lightSamples, int diffuseSamples, float filterWidth, float gamma, float exposure) {
+        this->width = width;
+        this->height = height;
+        this->maximumDepth = maximumDepth;
+        this->cameraSamples = cameraSamples;
+        this->lightSamples = lightSamples;
+        this->diffuseSamples = diffuseSamples;
+        this->filterWidth = filterWidth;
+        this->gamma = gamma;
+        this->exposure = exposure;
+    }
+};
+
+struct Renderer {
+    RenderOptions * options;
+    Camera * camera;
+    Scene * scene;
+    
+    Renderer() {}
+    Renderer(RenderOptions * options, Camera * camera, Scene * scene) {
+        this->options = options;
+        this->camera = camera;
+        this->scene = scene;
+    }
+    
+    Color3 gamma(Color3 color, float value){
+    	float inverseGamma = (1 / value);
+		return Color3(pow(color.r, inverseGamma), pow(color.g, inverseGamma), pow(color.b, inverseGamma));
+	}
+	
+	Color3 exposure(Color3 color, float value){
+		float power = pow(2, value);
+		return Color3(color.r * power, color.g * power, color.b * power);
+	} 
+
+   
+    Color3 trace(const Ray & ray, int depth) const {
+        
+        Intersection intersection;
+
+        if (scene->intersects(ray, intersection))
+            return Color3(1.0, 1.0, 1.0);
+
+        return Color3(0, 0, 0);
+        
+    };
+    
+    Image3 render() const {
+
+        for (int i = 0; i < options->width-1; i++) {
+            for (int j = 0; j < options->height-1; j++) {
+
+                Point[] samples = stratifiedSample(options->cameraSamples);
+                
+                Color3 color = Color3(0, 0, 0);
+                float totalWeight = 0;
+                
+                for (int k = 0; k < options->cameraSamples; k++) {
+                    Point sample = (samples[k] - Point(0.5, 0.5)) * options->filterWidth;
+                    Ray ray = camera->generateRay(i, j, sample);
+                    
+                    float weight = gaussian2D(sample, options->filterWidth);
+                    
+                    color += trace(ray, 0) * weight;
+                    totalWeight += weight;
+                }
+                
+                color /= totalWeight;
+                
+                image[i][j] = saturate(gamma(exposure(color, exposureValue), gammaValue)) * 255;
+            }
+        }
+    }
+};
+
+int main(int argc, char ** argv) {
+
+    Film film(800, 600);
+    
+    Camera camera(radians(20.0), film, Matrix4());
+    camera.lookAt(Vector3(0, 0, 35.0), Vector3(0, 0, 0), Vector3(0, 1.0, 0));
+    
+    BSDF * bsdf = new BSDF(BSDFType::Diffuse, Color3(1.0f, 1.0f, 1.0f));
+    
+    Shape * sphere = new Sphere(Vector3(0.0f, 0.0f, 0.0f), 1.0f, bsdf);
+    
+    Vertex vertex0(Vector3(-0.5f, -0.5f, 0.0f), Vector3(0.0f, 0.0f, 1.0f), Vector2(0.0f, 0.0f));
+    Vertex vertex1(Vector3(0.5f, -0.5f, 0.0f), Vector3(0.0f, 0.0f, 1.0f), Vector2(1.0f, 0.0f));
+    Vertex vertex2(Vector3(0.0f, 1.0f, 0.0f), Vector3(0.0f, 0.0f, 1.0f), Vector2(0.0f, 1.0f));
+    
+    Shape * triangle = new Triangle(vertex0, vertex1, vertex2, bsdf);
+    
+    std::vector<Shape *> shapes;
+    
+    shapes.push_back(sphere);
+    shapes.push_back(triangle);
+    
+    Scene scene(shapes);
+    
+    Ray ray(Vector3(0.0f, 0.0f, 10.0f), Vector3(0.0f, 0.0f, -1.0f));
+    Intersection intersection;
+    
+    scene.intersects(ray, intersection);
+    
+    std::cout << "Hit: " << intersection.hit << std::endl;
+    std::cout << "Distance: " << intersection.distance << std::endl;
+    std::cout << "Index: " << intersection.index << std::endl;
+
+    if (intersection.hit) {
+        Shape * shape = scene.shapes[intersection.index];
+        
+        ShaderGlobals shaderGlobals;
+        shape->calculateShaderGlobals(ray, intersection, shaderGlobals);
+        
+        std::cout << "Point: " << shaderGlobals.point << std::endl;
+        std::cout << "Normal: " << shaderGlobals.normal << std::endl;
+        std::cout << "Texture coordinate: " << shaderGlobals.textureCoordinate << std::endl;
+        std::cout << "UV: " << shaderGlobals.uv << std::endl;
+        std::cout << "Tangent U: " << shaderGlobals.tangentU << std::endl;
+        std::cout << "Tangent V: " << shaderGlobals.tangentV << std::endl;
+        std::cout << "View direction: " << shaderGlobals.viewDirection << std::endl;
+        std::cout << "Light direction: " << shaderGlobals.lightDirection << std::endl;
+        std::cout << "Light point: " << shaderGlobals.lightPoint << std::endl;
+        std::cout << "Light normal: " << shaderGlobals.lightNormal << std::endl;
+    }
+    
+    
+    
+    delete bsdf;
+    delete sphere;
+    delete triangle;
+
+    return 0;
+}
     RenderOptions(int width, int height, int maximumDepth,int cameraSamples, int lightSamples, int diffuseSamples, float filterWidth, float gamma, float exposure) {
         this->width = width;
         this->height = height;
