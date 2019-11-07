@@ -12,6 +12,36 @@
 
 using namespace aurora;
 
+float uniformRandom1D() {
+    return uniformRandom();
+}
+
+Vector2 uniformRandom2D() {
+    return Vector2(uniformRandom1D(), uniformRandom1D());
+}
+
+void stratifiedSample(int count, std::vector<Vector2> & samples) {
+    samples.reserve(count);
+    
+    int size = std::sqrt(count);
+    float inverseSize = 1.0 / size;
+    
+    for (int i = 0; i < count; i++) {
+        Vector2 offset(i / size, i % size);
+        Vector2 point = (offset + uniformRandom2D()) * inverseSize;
+        
+        samples.push_back(point);
+    }
+}
+
+float gaussian1D(float sample, float width) {
+    float radius = width * 0.5;
+    return std::fmax(0, std::exp(-sample * sample) - std::exp(-radius * radius));
+}
+float gaussian2D(const Vector2 & sample, float width) {
+    return gaussian1D(sample.x, width) * gaussian1D(sample.y, width);
+}
+
 struct ShaderGlobals {
     Vector3 point;
     Vector3 normal;
@@ -435,18 +465,20 @@ struct Renderer {
         
     };
     
-    Image3 render() const {
-
+    Image3 render(Image3 * image) const {
+	
+		const Vector2 Point(0.5, 0.5);
+		
         for (int i = 0; i < options->width-1; i++) {
             for (int j = 0; j < options->height-1; j++) {
-
-                Point[] samples = stratifiedSample(options->cameraSamples);
+				std::vector<Vector2> samples;
+                stratifiedSample(options->cameraSamples,samples);
                 
                 Color3 color = Color3(0, 0, 0);
                 float totalWeight = 0;
                 
                 for (int k = 0; k < options->cameraSamples; k++) {
-                    Point sample = (samples[k] - Point(0.5, 0.5)) * options->filterWidth;
+                    Vector2 sample = (samples[k] - Point) * options->filterWidth;
                     Ray ray = camera->generateRay(i, j, sample);
                     
                     float weight = gaussian2D(sample, options->filterWidth);
@@ -457,7 +489,7 @@ struct Renderer {
                 
                 color /= totalWeight;
                 
-                image[i][j] = saturate(gamma(exposure(color, exposureValue), gammaValue)) * 255;
+                image[i][j] = saturate(gamma(exposure(color,exposureValue), gammaValue)) * 255;
             }
         }
     }
